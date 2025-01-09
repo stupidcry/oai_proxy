@@ -7,7 +7,7 @@ import io
 from dotenv import load_dotenv
 from pathlib import Path
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage,AIMessage
 from langchain_community.adapters.openai import convert_message_to_dict
 import httpx
 import openai
@@ -18,6 +18,7 @@ import azure.cognitiveservices.speech as speechsdk
 import io
 import time
 
+message_context = []
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 httpx_client = httpx.Client(http2=True, verify=False)
 
@@ -43,6 +44,18 @@ def synthesize_speech(text):
     result = speech_synthesizer.speak_text_async(text).get()
     return io.BytesIO(result.audio_data)
 
+def generate_message(userMessage):
+    global message_context
+    messages = [
+    SystemMessage("你是智能助手，回答用户的消息不超过200字，不要有换行。"),
+    ]
+    message_context.append(HumanMessage(userMessage))
+    messages += message_context
+    message_context = message_context[-12:]
+    print(messages)
+    
+    return messages
+
 
 app = Flask(__name__)
 
@@ -67,14 +80,11 @@ def chat():
     logging.info(f'data: {data}')
     userMessage = data.get("message")
     
-    messages = [
-    SystemMessage("你是智能助手，回答用户的消息不超过200字，不要有换行。"),
-    HumanMessage(userMessage),
-    ]
+    messages = generate_message(userMessage)
 
     openai_response = model.invoke(messages)
     print(openai_response.content)
-    print(openai_response.usage_metadata )
+    message_context.append(AIMessage(openai_response.content))
     if wantEndChat(userMessage)=="yes":
         return convert_message_to_dict(openai_response), 201
     return convert_message_to_dict(openai_response), 200
