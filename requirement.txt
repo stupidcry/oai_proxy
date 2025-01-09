@@ -1,4 +1,12 @@
 Flask
-langchain=0.3.12
+langchain
+langchain_openai
+langchain_core
+langchain_community
 openai
 python-dotenv
+pydub
+httpx[http2]
+scipy
+soundfile
+numpy
