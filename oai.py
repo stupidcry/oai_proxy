@@ -1,4 +1,3 @@
-import os
 import logging
 from flask import Flask, request, jsonify, send_file
 import requests
@@ -13,6 +12,11 @@ from langchain_community.adapters.openai import convert_message_to_dict
 import httpx
 import openai
 import numpy as np
+import os
+from flask import Flask, send_file, request
+import azure.cognitiveservices.speech as speechsdk
+import io
+import time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 httpx_client = httpx.Client(http2=True, verify=False)
@@ -23,14 +27,22 @@ model = ChatOpenAI(model="gpt-4o-mini",
                    http_client=httpx_client)
 
 oai_client = model.root_client
-# openai.audio.speech.create
 
-# 加载环境变量
-# load_dotenv()
-# 获取OpenAI API密钥
-# openai_api_key = os.getenv("OPENAI_API_KEY")
-# print(openai_api_key)
-# 初始化Flask应用
+speech_key, service_region = "EkRhgUL5IbdoHSxXDn9aKM0nQPbgmuScNk1OGac5ZeZ9M8LuKVh4JQQJ99BAACqBBLyXJ3w3AAAYACOGQgFb", "southeastasia"
+speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=service_region)
+# Set the voice name, refer to https://aka.ms/speech/voices/neural for full list.
+# zh-CN-XiaoxiaoMultilingualNeural
+# zh-CN-Xiaochen:DragonHDLatestNeural  500k
+# zh-CN-XiaochenMultilingualNeural
+speech_config.speech_synthesis_voice_name = "zh-CN-XiaochenMultilingualNeural"
+speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config,audio_config=None)
+
+
+# Azure TTS 配置
+def synthesize_speech(text):
+    result = speech_synthesizer.speak_text_async(text).get()
+    return io.BytesIO(result.audio_data)
+
 
 app = Flask(__name__)
 
@@ -75,7 +87,7 @@ def tts():
         text = data.get("text")
         response = oai_client.audio.speech.create(
         model="tts-1",
-        voice="alloy",
+        voice="onyx",
         input=text,
         response_format="wav"
         )
@@ -121,6 +133,23 @@ def tts():
             as_attachment=True,
             download_name="bomb.wav"
         )
+    
+@app.route('/aztts', methods=['POST'])
+def tts_az():
+    text = request.json.get('text')
+    if not text:
+        return "Missing text parameter", 400
+    
+    # 合成语音并获取音频数据
+    start_time = time.time()
+    
+    audio_stream = synthesize_speech(text)
+    print(f"time：{time.time()-start_time}")
+    if audio_stream:
+        return send_file(audio_stream, mimetype='audio/wav', as_attachment=True,download_name="out.wav")
+    else:
+        return "Failed to synthesize speech", 500
+
 
 if __name__ == "__main__":
     #wantEndChat("你好啊")
