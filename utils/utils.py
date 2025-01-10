@@ -2,6 +2,7 @@ import logging
 from langchain_core.messages import HumanMessage, SystemMessage,AIMessage
 
 message_context = []
+
 def generate_message(userMessage):
     global message_context
     messages = [
@@ -12,3 +13,10 @@ def generate_message(userMessage):
     message_context = message_context[-12:]
     logging.info(f'context: {message_context}')
     return messages
+
+def add_context_message(userMessage):
+    global message_context
+    message_context.append(AIMessage(userMessage))
+    message_context = message_context[-12:]
+    logging.info(f'context: {message_context}')
+    return message_context

@@ -1,6 +1,6 @@
 from flask import Blueprint, request,send_file
 import logging
-from utils.utils import generate_message, message_context
+from utils.utils import generate_message, add_context_message
 import logging
 from langchain_core.messages import HumanMessage, SystemMessage,AIMessage
 from langchain_community.adapters.openai import convert_message_to_dict
@@ -41,7 +41,7 @@ def chat():
 
     openai_response = oai_model.invoke(messages)
     logging.info(f'response: {openai_response.content}')
-    message_context.append(AIMessage(openai_response.content))
+    add_context_message(openai_response.content)
     if wantEndChat(userMessage)=="yes":
         return convert_message_to_dict(openai_response), 201
     return convert_message_to_dict(openai_response), 200
